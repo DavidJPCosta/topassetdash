@@ -871,6 +871,9 @@ export default function Home() {
               </svg>
               {sales?.title || "iShares Core S&P 500 ETF (IVV)"}
             </h3>
+            <p className="text-xs font-medium text-slate-400 mb-3">
+              {sales?.description || "iShares Core S&P 500 ETF"} ({currency})
+            </p>
             <div className="space-y-2">
               <div className="bg-slate-700/20 rounded-lg p-4 border border-slate-600/20">
                 <p className="text-xl font-bold tabular-nums">
@@ -911,9 +914,6 @@ export default function Home() {
                     })()}
                 </div>
               </div>
-              <p className="text-xs font-medium">
-                {sales?.description || "iShares Core S&P 500 ETF"} ({currency})
-              </p>
             </div>
           </div>
 
@@ -935,6 +935,9 @@ export default function Home() {
               </svg>
               {analytics?.title || "iShares MSCI ACWI ETF (ACWI)"}
             </h3>
+            <p className="text-xs font-medium text-slate-400 mb-3">
+              {analytics?.description || "iShares MSCI World ETF"} ({currency})
+            </p>
             <div className="space-y-2">
               <div className="bg-slate-700/20 rounded-lg p-4 border border-slate-600/20">
                 <p className="text-xl font-bold tabular-nums">
@@ -975,10 +978,6 @@ export default function Home() {
                     })()}
                 </div>
               </div>
-              <p className="text-xs font-medium">
-                {analytics?.description || "iShares MSCI World ETF"} ({currency}
-                )
-              </p>
             </div>
           </div>
 
@@ -1000,6 +999,9 @@ export default function Home() {
               </svg>
               {_t("panel.cttTitle")}
             </h3>
+            <p className="text-xs font-medium text-slate-400 mb-3">
+              {revenue?.description || "Portuguese Savings Rate"} ({currency})
+            </p>
             <div className="space-y-2">
               <div className="bg-slate-700/20 rounded-lg p-4 border border-slate-600/20">
                 <p className="text-lg font-bold tabular-nums">
@@ -1021,9 +1023,6 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <p className="text-xs font-medium">
-                {revenue?.description || "Portuguese Savings Rate"} ({currency})
-              </p>
             </div>
           </div>
 
@@ -1045,6 +1044,10 @@ export default function Home() {
               </svg>
               {performance?.title || "EURIBOR Interest Rates"}
             </h3>
+            <p className="text-xs font-medium text-slate-400 mb-3">
+              {performance?.description || "Reference Interest Rate"} (
+              {currency})
+            </p>
             <div className="space-y-2">
               <div className="bg-slate-700/20 rounded-lg p-4 border border-slate-600/20">
                 <p className="text-lg font-bold tabular-nums">
@@ -1062,10 +1065,6 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <p className="text-xs font-medium">
-                {performance?.description || "Reference Interest Rate"} (
-                {currency})
-              </p>
             </div>
           </div>
         </div>
@@ -1128,6 +1127,12 @@ export default function Home() {
                     </svg>
                     {panel.name} ({panel.symbol})
                   </h3>
+                  <p className="text-xs font-medium text-slate-400 mb-3">
+                    {panel.symbol} Â·{" "}
+                    {panel.loading
+                      ? _t("panel.loadingText")
+                      : _t("panel.liveQuote")}
+                  </p>
                   <div className="space-y-2">
                     <div className="bg-slate-700/20 rounded-lg p-4 border border-slate-600/20">
                       <p className="text-xl font-bold tabular-nums">
@@ -1167,12 +1172,6 @@ export default function Home() {
                           })()}
                       </div>
                     </div>
-                    <p className="text-xs font-medium">
-                      {panel.symbol} Â·{" "}
-                      {panel.loading
-                        ? _t("panel.loadingText")
-                        : _t("panel.liveQuote")}
-                    </p>
                   </div>
                 </div>
               ))}
