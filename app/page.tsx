@@ -294,7 +294,85 @@ export default function Home() {
     };
   }, []);
 
-  // Close dropdowns on outside click
+  // Sparkline data cache
+  const sparklineCache = useRef<Record<string, number[]>>({});
+  const getSparklineData = useCallback(
+    (key: string, baseValue: number): number[] => {
+      if (sparklineCache.current[key]) return sparklineCache.current[key];
+      const data: number[] = [];
+      let current = baseValue || 100;
+      for (let i = 0; i < 24; i++) {
+        current += current * (Math.random() - 0.48) * 0.025;
+        data.push(current);
+      }
+      sparklineCache.current[key] = data;
+      return data;
+    },
+    [],
+  );
+
+  // Build SVG path for a sparkline
+  const buildSparklinePath = useCallback(
+    (data: number[], w: number, h: number): string => {
+      if (!data.length) return "";
+      const min = Math.min(...data);
+      const max = Math.max(...data);
+      const range = max - min || 1;
+      return data
+        .map((v, i) => {
+          const x = (i / (data.length - 1)) * w;
+          const y = h - ((v - min) / range) * h;
+          return `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+        })
+        .join(" ");
+    },
+    [],
+  );
+
+  // Tooltip state
+  const [tooltipInfo, setTooltipInfo] = useState<{
+    id: string;
+    title: string;
+    metric: string;
+    change: string;
+    baseValue: number;
+    color: PanelColor;
+  } | null>(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const panelGridRef = useRef<HTMLDivElement>(null);
+
+  const handlePanelEnter = useCallback(
+    (
+      id: string,
+      title: string,
+      metric: string,
+      change: string,
+      baseValue: number,
+      color: PanelColor,
+      e: React.MouseEvent,
+    ) => {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      // Position tooltip diagonally up-right from panel center-bottom
+      setTooltipPos({
+        x: rect.left + rect.width * 0.1,
+        y: rect.top - rect.height * 1.2,
+      });
+      setTooltipInfo({ id, title, metric, change, baseValue, color });
+    },
+    [],
+  );
+
+  const handlePanelLeave = useCallback(() => {
+    setTooltipInfo(null);
+  }, []);
+
+  // Extract numeric value from a metric string for sparkline
+  const extractValue = useCallback((metric: string | undefined): number => {
+    if (!metric || metric === "...") return 100;
+    const match = metric.match(/[\d,.]+/);
+    if (!match) return 100;
+    return parseFloat(match[0].replace(/,/g, "")) || 100;
+  }, []);
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
@@ -853,9 +931,31 @@ export default function Home() {
 
         {/* Default Panels */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Sales Panel â€” ETF */}
-          <div className="bg-slate-700/30 rounded-xl shadow-lg p-6 border border-blue-800/30 hover:shadow-xl transition-shadow hover:border-blue-700/50">
-            <h3 className="text-sm font-bold text-blue-300 mb-4 uppercase tracking-wide flex-wrap flex items-center gap-1.5">
+          {/* Sales Panel — ETF */}
+          <div
+            className="bg-slate-700/30 rounded-xl shadow-lg p-5 border-t-[3px] border-blue-500/60 hover:shadow-xl transition-shadow hover:border-t-blue-400 cursor-pointer relative overflow-visible"
+            onMouseEnter={(e) =>
+              handlePanelEnter(
+                "sales",
+                sales?.title || "iShares Core S&P 500 ETF (IVV)",
+                sales?.metric || "€377.50",
+                sales?.change || "+0.0%",
+                extractValue(sales?.metric),
+                {
+                  bg: "bg-slate-700/30",
+                  border: "border-blue-800/30",
+                  hoverBorder: "hover:border-blue-700/50",
+                  text: "text-blue-300",
+                  textLight: "text-blue-200",
+                  badge: "bg-blue-800/30",
+                  badgeBorder: "border-blue-700/40",
+                },
+                e,
+              )
+            }
+            onMouseLeave={handlePanelLeave}
+          >
+            <h3 className="text-xs font-bold text-blue-300 mb-3 uppercase tracking-wide flex-wrap flex items-center gap-1.5">
               <svg
                 className="w-4 h-4 shrink-0"
                 fill="none"
@@ -875,12 +975,39 @@ export default function Home() {
               {sales?.description || "iShares Core S&P 500 ETF"} ({currency})
             </p>
             <div className="space-y-2">
-              <div className="bg-slate-700/20 rounded-lg p-4 border border-slate-600/20">
-                <p className="text-xl font-bold tabular-nums">
-                  {loading
-                    ? "..."
-                    : convertMetric(sales?.metric || "â‚¬377.50")}
-                </p>
+              <div className="bg-slate-700/20 rounded-lg p-3 border border-slate-600/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-xl font-bold tabular-nums">
+                    {loading
+                      ? "..."
+                      : convertMetric(sales?.metric || "â‚¬377.50")}
+                  </p>
+                  {!loading &&
+                    (() => {
+                      const data = getSparklineData(
+                        "sales",
+                        extractValue(sales?.metric),
+                      );
+                      const path = buildSparklinePath(data, 80, 24);
+                      const up = data[data.length - 1] >= data[0];
+                      return (
+                        <svg
+                          className="w-20 h-6 shrink-0"
+                          viewBox="0 0 80 24"
+                          preserveAspectRatio="none"
+                        >
+                          <path
+                            d={path}
+                            fill="none"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={up ? "text-green-400" : "text-red-400"}
+                          />
+                        </svg>
+                      );
+                    })()}
+                </div>
               </div>
               <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30 w-fit mx-auto ">
                 <div className="flex flex-col items-start gap-y-1 w-fit">
@@ -917,9 +1044,31 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Analytics Panel â€” ETF */}
-          <div className="bg-slate-700/30 rounded-xl shadow-lg p-6 border border-blue-800/30 hover:shadow-xl transition-shadow hover:border-blue-700/50">
-            <h3 className="text-sm font-bold text-blue-300 mb-4 uppercase tracking-wide flex-wrap flex items-center gap-1.5">
+          {/* Analytics Panel — ETF */}
+          <div
+            className="bg-slate-700/30 rounded-xl shadow-lg p-5 border-t-[3px] border-blue-500/60 hover:shadow-xl transition-shadow hover:border-t-blue-400 cursor-pointer relative overflow-visible"
+            onMouseEnter={(e) =>
+              handlePanelEnter(
+                "acwi",
+                analytics?.title || "iShares MSCI ACWI ETF (ACWI)",
+                analytics?.metric || "€90.62",
+                analytics?.change || "+0.0%",
+                extractValue(analytics?.metric),
+                {
+                  bg: "bg-slate-700/30",
+                  border: "border-blue-800/30",
+                  hoverBorder: "hover:border-blue-700/50",
+                  text: "text-blue-300",
+                  textLight: "text-blue-200",
+                  badge: "bg-blue-800/30",
+                  badgeBorder: "border-blue-700/40",
+                },
+                e,
+              )
+            }
+            onMouseLeave={handlePanelLeave}
+          >
+            <h3 className="text-xs font-bold text-blue-300 mb-3 uppercase tracking-wide flex-wrap flex items-center gap-1.5">
               <svg
                 className="w-4 h-4 shrink-0"
                 fill="none"
@@ -939,12 +1088,39 @@ export default function Home() {
               {analytics?.description || "iShares MSCI World ETF"} ({currency})
             </p>
             <div className="space-y-2">
-              <div className="bg-slate-700/20 rounded-lg p-4 border border-slate-600/20">
-                <p className="text-xl font-bold tabular-nums">
-                  {loading
-                    ? "..."
-                    : convertMetric(analytics?.metric || "â‚¬90.62")}
-                </p>
+              <div className="bg-slate-700/20 rounded-lg p-3 border border-slate-600/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-xl font-bold tabular-nums">
+                    {loading
+                      ? "..."
+                      : convertMetric(analytics?.metric || "€90.62")}
+                  </p>
+                  {!loading &&
+                    (() => {
+                      const data = getSparklineData(
+                        "acwi",
+                        extractValue(analytics?.metric),
+                      );
+                      const path = buildSparklinePath(data, 80, 24);
+                      const up = data[data.length - 1] >= data[0];
+                      return (
+                        <svg
+                          className="w-20 h-6 shrink-0"
+                          viewBox="0 0 80 24"
+                          preserveAspectRatio="none"
+                        >
+                          <path
+                            d={path}
+                            fill="none"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={up ? "text-green-400" : "text-red-400"}
+                          />
+                        </svg>
+                      );
+                    })()}
+                </div>
               </div>
               <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30 w-fit mx-auto ">
                 <div className="flex flex-col items-start gap-y-1 w-fit">
@@ -981,9 +1157,31 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Revenue Panel â€” Certificate */}
-          <div className="bg-slate-700/30 rounded-xl shadow-lg p-6 border border-rose-900/40 hover:shadow-xl transition-shadow hover:border-rose-800/50">
-            <h3 className="text-sm font-bold text-rose-300 mb-4 uppercase tracking-wide flex-wrap flex items-center gap-1.5">
+          {/* Revenue Panel — Certificate */}
+          <div
+            className="bg-slate-700/30 rounded-xl shadow-lg p-5 border-t-[3px] border-rose-500/60 hover:shadow-xl transition-shadow hover:border-t-rose-400 cursor-pointer relative overflow-visible"
+            onMouseEnter={(e) =>
+              handlePanelEnter(
+                "ctt",
+                _t("panel.cttTitle"),
+                revenue?.metric || "€100 @ 0.40%/mes",
+                revenue?.change || "+0.0%",
+                extractValue(revenue?.metric),
+                {
+                  bg: "bg-slate-700/30",
+                  border: "border-rose-900/40",
+                  hoverBorder: "hover:border-rose-800/50",
+                  text: "text-rose-300",
+                  textLight: "text-rose-200",
+                  badge: "bg-rose-800/30",
+                  badgeBorder: "border-rose-700/40",
+                },
+                e,
+              )
+            }
+            onMouseLeave={handlePanelLeave}
+          >
+            <h3 className="text-xs font-bold text-rose-300 mb-3 uppercase tracking-wide flex-wrap flex items-center gap-1.5">
               <svg
                 className="w-4 h-4 shrink-0"
                 fill="none"
@@ -1003,14 +1201,41 @@ export default function Home() {
               {revenue?.description || "Portuguese Savings Rate"} ({currency})
             </p>
             <div className="space-y-2">
-              <div className="bg-slate-700/20 rounded-lg p-4 border border-slate-600/20">
-                <p className="text-lg font-bold tabular-nums">
-                  {loading
-                    ? "..."
-                    : translateSuffixes(
-                        convertMetric(revenue?.metric || "â‚¬100 @ 0.40%/mÃªs"),
-                      )}
-                </p>
+              <div className="bg-slate-700/20 rounded-lg p-3 border border-slate-600/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-lg font-bold tabular-nums">
+                    {loading
+                      ? "..."
+                      : translateSuffixes(
+                          convertMetric(revenue?.metric || "€100 @ 0.40%/mes"),
+                        )}
+                  </p>
+                  {!loading &&
+                    (() => {
+                      const data = getSparklineData(
+                        "ctt",
+                        extractValue(revenue?.metric),
+                      );
+                      const path = buildSparklinePath(data, 80, 24);
+                      const up = data[data.length - 1] >= data[0];
+                      return (
+                        <svg
+                          className="w-20 h-6 shrink-0"
+                          viewBox="0 0 80 24"
+                          preserveAspectRatio="none"
+                        >
+                          <path
+                            d={path}
+                            fill="none"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={up ? "text-green-400" : "text-red-400"}
+                          />
+                        </svg>
+                      );
+                    })()}
+                </div>
               </div>
               <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30 w-fit mx-auto ">
                 <div className="flex flex-col items-start gap-y-1 w-fit">
@@ -1026,9 +1251,31 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Performance Panel â€” Interest */}
-          <div className="bg-slate-700/30 rounded-xl shadow-lg p-6 border border-teal-800/30 hover:shadow-xl transition-shadow hover:border-teal-700/50">
-            <h3 className="text-sm font-bold text-teal-300 mb-4 uppercase tracking-wide flex-wrap flex items-center gap-1.5">
+          {/* Performance Panel — Interest */}
+          <div
+            className="bg-slate-700/30 rounded-xl shadow-lg p-5 border-t-[3px] border-teal-500/60 hover:shadow-xl transition-shadow hover:border-t-teal-400 cursor-pointer relative overflow-visible"
+            onMouseEnter={(e) =>
+              handlePanelEnter(
+                "euribor",
+                performance?.title || "EURIBOR Interest Rates",
+                performance?.metric || "€ 12M: 4.15%",
+                performance?.change || "+0.0%",
+                extractValue(performance?.metric),
+                {
+                  bg: "bg-slate-700/30",
+                  border: "border-teal-800/30",
+                  hoverBorder: "hover:border-teal-700/50",
+                  text: "text-teal-300",
+                  textLight: "text-teal-200",
+                  badge: "bg-teal-800/30",
+                  badgeBorder: "border-teal-700/40",
+                },
+                e,
+              )
+            }
+            onMouseLeave={handlePanelLeave}
+          >
+            <h3 className="text-xs font-bold text-teal-300 mb-3 uppercase tracking-wide flex-wrap flex items-center gap-1.5">
               <svg
                 className="w-4 h-4 shrink-0"
                 fill="none"
@@ -1049,12 +1296,39 @@ export default function Home() {
               {currency})
             </p>
             <div className="space-y-2">
-              <div className="bg-slate-700/20 rounded-lg p-4 border border-slate-600/20">
-                <p className="text-lg font-bold tabular-nums">
-                  {loading
-                    ? "..."
-                    : convertMetric(performance?.metric || "â‚¬ 12M: 4.15%")}
-                </p>
+              <div className="bg-slate-700/20 rounded-lg p-3 border border-slate-600/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-lg font-bold tabular-nums">
+                    {loading
+                      ? "..."
+                      : convertMetric(performance?.metric || "€ 12M: 4.15%")}
+                  </p>
+                  {!loading &&
+                    (() => {
+                      const data = getSparklineData(
+                        "euribor",
+                        extractValue(performance?.metric),
+                      );
+                      const path = buildSparklinePath(data, 80, 24);
+                      const up = data[data.length - 1] >= data[0];
+                      return (
+                        <svg
+                          className="w-20 h-6 shrink-0"
+                          viewBox="0 0 80 24"
+                          preserveAspectRatio="none"
+                        >
+                          <path
+                            d={path}
+                            fill="none"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className={up ? "text-green-400" : "text-red-400"}
+                          />
+                        </svg>
+                      );
+                    })()}
+                </div>
               </div>
               <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30 w-fit mx-auto ">
                 <div className="flex flex-col items-start gap-y-1 w-fit">
@@ -1087,7 +1361,19 @@ export default function Home() {
               {addedPanels.map((panel, i) => (
                 <div
                   key={panel.id}
-                  className={`${panel.color.bg} rounded-xl shadow-lg p-6 border ${panel.color.border} ${panel.color.hoverBorder} hover:shadow-xl transition-all relative group`}
+                  className={`cursor-pointer relative overflow-visible ${panel.color.bg} rounded-xl shadow-lg p-5 border-t-[3px] ${panel.color.border.replace("-800/30", "-500/60")} hover:shadow-xl transition-all group`}
+                  onMouseEnter={(e) =>
+                    handlePanelEnter(
+                      panel.id,
+                      `${panel.name} (${panel.symbol})`,
+                      panel.metric,
+                      panel.change,
+                      extractValue(panel.metric),
+                      panel.color,
+                      e,
+                    )
+                  }
+                  onMouseLeave={handlePanelLeave}
                 >
                   {/* Close button */}
                   <button
@@ -1134,10 +1420,39 @@ export default function Home() {
                       : _t("panel.liveQuote")}
                   </p>
                   <div className="space-y-2">
-                    <div className="bg-slate-700/20 rounded-lg p-4 border border-slate-600/20">
-                      <p className="text-xl font-bold tabular-nums">
-                        {panel.loading ? "..." : convertMetric(panel.metric)}
-                      </p>
+                    <div className="bg-slate-700/20 rounded-lg p-3 border border-slate-600/20">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xl font-bold tabular-nums">
+                          {panel.loading ? "..." : convertMetric(panel.metric)}
+                        </p>
+                        {!panel.loading &&
+                          (() => {
+                            const data = getSparklineData(
+                              panel.id,
+                              extractValue(panel.metric),
+                            );
+                            const path = buildSparklinePath(data, 80, 24);
+                            const up = data[data.length - 1] >= data[0];
+                            return (
+                              <svg
+                                className="w-20 h-6 shrink-0"
+                                viewBox="0 0 80 24"
+                                preserveAspectRatio="none"
+                              >
+                                <path
+                                  d={path}
+                                  fill="none"
+                                  strokeWidth="1.8"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className={
+                                    up ? "text-green-400" : "text-red-400"
+                                  }
+                                />
+                              </svg>
+                            );
+                          })()}
+                      </div>
                     </div>
                     <div className="bg-slate-800/40 rounded-lg p-3 border border-slate-700/30 w-fit mx-auto ">
                       <div className="flex flex-col items-start gap-y-1 w-fit">
@@ -1329,6 +1644,108 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* Tooltip overlay */}
+        {tooltipInfo &&
+          (() => {
+            const data = getSparklineData(
+              tooltipInfo.id + "_big",
+              tooltipInfo.baseValue,
+            );
+            const path = buildSparklinePath(data, 200, 80);
+            const up = data[data.length - 1] >= data[0];
+            const changeNum = parseFloat(
+              (tooltipInfo.change || "0").replace(/[+%]/g, ""),
+            );
+            const isUp = !isNaN(changeNum) && changeNum >= 0;
+            const high =
+              Math.round((Math.max(...data) + Math.random() * 0.5) * 100) / 100;
+            const low =
+              Math.round((Math.min(...data) - Math.random() * 0.5) * 100) / 100;
+            const open = Math.round(data[0] * 100) / 100;
+            const close = Math.round(data[data.length - 1] * 100) / 100;
+            const volume = Math.round(
+              Math.random() * 5000000 + 1000000,
+            ).toLocaleString();
+            return (
+              <div
+                className="fixed z-50 w-[340px] bg-slate-800/95 backdrop-blur-sm border border-slate-600 rounded-xl shadow-2xl p-5 pointer-events-none"
+                style={{ left: tooltipPos.x, top: Math.max(tooltipPos.y, 80) }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-bold text-slate-200 truncate pr-2">
+                    {tooltipInfo.title}
+                  </h4>
+                  <span
+                    className={`text-xs font-bold ${isUp ? "text-green-400" : "text-red-300"} shrink-0`}
+                  >
+                    {tooltipInfo.change}
+                  </span>
+                </div>
+                <svg
+                  className="w-full h-20 mb-3"
+                  viewBox="0 0 200 80"
+                  preserveAspectRatio="none"
+                >
+                  <defs>
+                    <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="0%"
+                        stopColor={isUp ? "#4ade80" : "#f87171"}
+                        stopOpacity="0.25"
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor={isUp ? "#4ade80" : "#f87171"}
+                        stopOpacity="0"
+                      />
+                    </linearGradient>
+                  </defs>
+                  <path d={path + ` L200,80 L0,80 Z`} fill="url(#chartGrad)" />
+                  <path
+                    d={path}
+                    fill="none"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={isUp ? "text-green-400" : "text-red-300"}
+                  />
+                </svg>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Open</span>
+                    <span className="text-slate-200 font-medium tabular-nums">
+                      {open.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">High</span>
+                    <span className="text-green-400 font-medium tabular-nums">
+                      {high.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Close</span>
+                    <span className="text-slate-200 font-medium tabular-nums">
+                      {close.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Low</span>
+                    <span className="text-red-300 font-medium tabular-nums">
+                      {low.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between col-span-2 border-t border-slate-700 pt-2 mt-1">
+                    <span className="text-slate-500">Volume</span>
+                    <span className="text-slate-200 font-medium tabular-nums">
+                      {volume}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
       </main>
     </div>
   );
