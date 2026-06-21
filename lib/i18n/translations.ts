@@ -45,7 +45,7 @@ type Translations = Record<TranslationKey, string>;
 const en: Translations = {
   "search.placeholder": "Search ETFs, stocks, indexes...",
   "search.noResults": 'No results found for "{query}"',
-  "dashboard.title": "Top Assets",
+  "dashboard.title": "Dashets",
   "customAssets.title": "Custom Assets",
   "customAssets.count": "{count} custom panel(s)",
   "panel.loading": "...",
@@ -79,7 +79,7 @@ const en: Translations = {
 const pt: Translations = {
   "search.placeholder": "Pesquisar ETFs, ações, índices...",
   "search.noResults": 'Nenhum resultado encontrado para "{query}"',
-  "dashboard.title": "Ativos em Destaque",
+  "dashboard.title": "Dashets",
   "customAssets.title": "Ativos Personalizados",
   "customAssets.count": "{count} painel(ns) personalizado(s)",
   "panel.loading": "...",
@@ -113,7 +113,7 @@ const pt: Translations = {
 const es: Translations = {
   "search.placeholder": "Buscar ETFs, acciones, índices...",
   "search.noResults": 'No se encontraron resultados para "{query}"',
-  "dashboard.title": "Activos Destacados",
+  "dashboard.title": "Dashets",
   "customAssets.title": "Activos Personalizados",
   "customAssets.count": "{count} panel(es) personalizado(s)",
   "panel.loading": "...",
@@ -147,7 +147,7 @@ const es: Translations = {
 const fr: Translations = {
   "search.placeholder": "Rechercher ETFs, actions, indices...",
   "search.noResults": 'Aucun résultat trouvé pour "{query}"',
-  "dashboard.title": "Actifs en Vedette",
+  "dashboard.title": "Dashets",
   "customAssets.title": "Actifs Personnalisés",
   "customAssets.count": "{count} panneau(x) personnalisé(s)",
   "panel.loading": "...",
@@ -181,7 +181,7 @@ const fr: Translations = {
 const de: Translations = {
   "search.placeholder": "ETFs, Aktien, Indizes suchen...",
   "search.noResults": 'Keine Ergebnisse gefunden für "{query}"',
-  "dashboard.title": "Top-Anlagen",
+  "dashboard.title": "Dashets",
   "customAssets.title": "Benutzerdefinierte Assets",
   "customAssets.count": "{count} benutzerdefinierte(s) Panel(s)",
   "panel.loading": "...",

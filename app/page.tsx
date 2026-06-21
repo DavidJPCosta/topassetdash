@@ -567,7 +567,7 @@ export default function Home() {
       data: performance,
       color: "yellow",
       title: "EURIBOR Interest Rates",
-      metric: "â‚¬ 12M: 4.15%",
+      metric: "€ 4.15% (12M)",
       desc: "Reference Interest Rate",
     },
   ];
@@ -1258,7 +1258,7 @@ export default function Home() {
               handlePanelEnter(
                 "euribor",
                 performance?.title || "EURIBOR Interest Rates",
-                performance?.metric || "€ 12M: 4.15%",
+                performance?.metric || "€ 4.15% (12M)",
                 performance?.change || "+0.0%",
                 extractValue(performance?.metric),
                 {
@@ -1301,7 +1301,7 @@ export default function Home() {
                   <p className="text-lg font-bold tabular-nums">
                     {loading
                       ? "..."
-                      : convertMetric(performance?.metric || "€ 12M: 4.15%")}
+                      : convertMetric(performance?.metric || "€ 4.15% (12M)")}
                   </p>
                   {!loading &&
                     (() => {
@@ -1679,7 +1679,7 @@ export default function Home() {
                   <span
                     className={`text-xs font-bold ${isUp ? "text-green-400" : "text-red-300"} shrink-0`}
                   >
-                    {tooltipInfo.change}
+                    {translateSuffixes(tooltipInfo.change)}
                   </span>
                 </div>
                 <svg

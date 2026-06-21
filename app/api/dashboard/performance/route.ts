@@ -20,7 +20,7 @@ export async function GET() {
     return NextResponse.json({
       id: 4,
       title: "EURIBOR Interest Rates",
-      metric: `€ 12M: ${euribor12m}%`,
+      metric: `€ ${euribor12m}% (12M)`,
       change: `6M: ${euribor6m}% | 3M: ${euribor3m}%`,
       description: "EURIBOR 12-month Reference Rate (Annual)",
       timestamp: new Date().toISOString(),
@@ -30,7 +30,7 @@ export async function GET() {
     return NextResponse.json({
       id: 4,
       title: "EURIBOR Interest Rates",
-      metric: "€ 12M: 4.15%",
+      metric: "€ 4.15% (12M)",
       change: "6M: 3.95% | 3M: 3.75%",
       description: "EURIBOR 12-month Reference Rate (Annual)",
       timestamp: new Date().toISOString(),
